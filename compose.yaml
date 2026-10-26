@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      retries: 10
+  api:
+    build: ./backend
+    env_file: .env
+    ports: ['8000:8000']
+    volumes: [private_receipts:/app/private-media]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    command: sh -c 'python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2'
+  worker:
+    build: ./backend
+    env_file: .env
+    volumes: [private_receipts:/app/private-media]
+    depends_on:
+      api: {condition: service_started}
+    command: celery -A config worker --loglevel=warning --concurrency=2
+  beat:
+    build: ./backend
+    env_file: .env
+    depends_on: [api]
+    command: celery -A config beat --loglevel=warning --schedule=/tmp/celerybeat-schedule
+volumes:
+  postgres_data:
+  private_receipts:

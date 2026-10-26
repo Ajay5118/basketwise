@@ -1,0 +1,13 @@
+.venv/
+.runtime/
+__pycache__/
+*.pyc
+.env
+*.sqlite3
+private-media/
+.dart_tool/
+build/
+android/local.properties
+*.iml
+.pytest_cache/
+.idea/

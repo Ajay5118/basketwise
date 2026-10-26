@@ -1,0 +1,13 @@
+SYNTHETIC TEST FIXTURE — not a real merchant invoice
+Instamart
+Delivered
+Heritage Pouch Curd
+Quantity: 2
+Line total: Rs.94
+Diet Coke Can
+Quantity: 4
+Line total: Rs.180
+Item subtotal: Rs.274
+Handling fee: Rs.12
+Delivery fee: Rs.0
+Grand total: Rs.286

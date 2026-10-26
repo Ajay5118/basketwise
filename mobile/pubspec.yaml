@@ -1,0 +1,25 @@
+name: basketwise
+description: Privacy-first quick-commerce expense tracker.
+publish_to: none
+version: 1.0.0+1
+environment:
+  sdk: ^3.9.0
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^16.2.1
+  dio: ^5.9.0
+  flutter_secure_storage: ^9.2.4
+  file_picker: ^10.3.2
+  image_picker: ^1.2.0
+  share_plus: ^11.1.0
+  receive_sharing_intent: ^1.8.1
+  fl_chart: ^1.0.0
+  intl: ^0.20.2
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+flutter:
+  uses-material-design: true
