@@ -15,6 +15,6 @@ Run what applies and capture the summary line of each:
 6. Docker tests (Postgres + real Tesseract): `docker compose exec -T api python manage.py test --settings=config.test_settings`
 7. Live flow (only if asked or the stack is healthy): `cd mobile && flutter test test/live_flow_test.dart --dart-define=LIVE_API=true --dart-define=API_URL=http://127.0.0.1:8000/api/v1/`
 
-Baseline (2026-10-27): 40 backend tests OK (2 skipped natively), analyze clean, 8 Flutter tests pass.
+Baseline (2026-10-27): 43 backend tests OK (2 skipped natively), analyze clean, 12 Flutter tests pass.
 
 Output a table: check | result | key evidence. List skipped checks and why. Never report a check as passing that you didn't run. For a failure, include the failing test name and the relevant error lines, and suggest which agent (devops-runtime, backend-django, receipt-pipeline, flutter-mobile) should handle it.

@@ -87,7 +87,7 @@ cd mobile && flutter pub get && flutter analyze && flutter test
 flutter test test/live_flow_test.dart --dart-define=LIVE_API=true --dart-define=API_URL=http://127.0.0.1:8000/api/v1/
 ```
 
-Baseline as of 2026-10-27: 40 backend tests pass (2 OCR runtime tests skip natively), `flutter analyze` is clean, 8 Flutter tests pass, the Docker stack is healthy after the rebuild above.
+Baseline as of 2026-10-27: 43 backend tests pass (2 OCR runtime tests skip natively), `flutter analyze` is clean, 12 Flutter tests pass, the Docker stack is healthy after the rebuild above.
 
 ## Conventions
 

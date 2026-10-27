@@ -1,5 +1,11 @@
 # Verification evidence
 
+## 27 October 2026: fee insights dashboard
+
+- New `GET /api/v1/analytics/fees/` returns stated delivery, handling, packaging and other fees for this month, last month and all time, by fee type, by platform (average per order), by month, small "heavy" baskets (fees at least half the item value) and the worst order. Orders without fee details are counted as unknown, never zero; the fee share uses only orders with both fees and item value known.
+- Flutter home shows a "cost of convenience" card linking to a Fee insights screen with plain-language observations and bar breakdowns.
+- 43 backend tests pass natively and in Docker (PostgreSQL); 12 Flutter tests pass and analyze is clean. Debug APK installed on the USB tablet; the on-device screen was not observed by the developer tooling.
+
 ## 27 October 2026: bill summary screenshots, other fees, category shortcuts
 
 - New `parsers/bill_summary.py` reads app "Bill Summary" screenshots (Item Total, fees, To Pay). Images get three OCR passes that vote per row; a rupee glyph misread as a leading 2/7 is resolved only when exactly one reading reconciles with the total, otherwise the field stays unknown.

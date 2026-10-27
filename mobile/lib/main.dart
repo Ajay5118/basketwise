@@ -5,6 +5,7 @@ import 'api.dart';
 import 'screens.dart';
 import 'receipt.dart';
 import 'design.dart';
+import 'fees.dart';
 
 void main() => runApp(const ProviderScope(child: BasketWiseApp()));
 
@@ -15,6 +16,7 @@ final router = GoRouter(
       path: '/review/:id',
       builder: (_, state) => ReviewScreen(id: state.pathParameters['id']!),
     ),
+    GoRoute(path: '/fees', builder: (_, _) => const FeeInsightsScreen()),
     GoRoute(
       path: '/orders/:id',
       builder: (_, state) => DetailScreen(id: state.pathParameters['id']!),
@@ -89,63 +91,63 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final index = ref.watch(shellTabProvider);
     return Scaffold(
-    body: SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child: [
-            const HomeScreen(),
-            const OrdersScreen(),
-            const ScanScreen(),
-            const AnalyticsScreen(),
-            const ProfileScreen(),
-          ][index],
-        ),
-      ),
-    ),
-    bottomNavigationBar: DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withValues(alpha: .45),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: [
+              const HomeScreen(),
+              const OrdersScreen(),
+              const ScanScreen(),
+              const AnalyticsScreen(),
+              const ProfileScreen(),
+            ][index],
           ),
         ),
       ),
-      child: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (value) =>
-            ref.read(shellTabProvider.notifier).state = value,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.space_dashboard_outlined),
-            selectedIcon: Icon(Icons.space_dashboard),
-            label: 'Home',
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: .45),
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Orders',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.document_scanner_outlined),
-            selectedIcon: Icon(Icons.document_scanner),
-            label: 'Scan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_rounded),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Insights',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
+        ),
+        child: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: (value) =>
+              ref.read(shellTabProvider.notifier).state = value,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.space_dashboard_outlined),
+              selectedIcon: Icon(Icons.space_dashboard),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Orders',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.document_scanner_outlined),
+              selectedIcon: Icon(Icons.document_scanner),
+              label: 'Scan',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_rounded),
+              selectedIcon: Icon(Icons.bar_chart),
+              label: 'Insights',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }

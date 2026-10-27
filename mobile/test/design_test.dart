@@ -31,6 +31,25 @@ class DesignApi extends Api {
         'platforms': [],
       };
     }
+    if (path == 'analytics/fees/') {
+      const empty = {
+        'fees': '0.00',
+        'order_count': 0,
+        'fees_unknown_count': 0,
+        'comparable_items': '0.00',
+        'fee_share_percent': null,
+      };
+      return {
+        'this_month': empty,
+        'last_month': empty,
+        'all_time': empty,
+        'by_type': [],
+        'by_platform': [],
+        'monthly': [],
+        'heavy_baskets': {'count': 0, 'fees': '0.00', 'items': '0.00'},
+        'worst_order': null,
+      };
+    }
     if (path == 'receipts/9/preview/') {
       return {
         'id': 9,
@@ -130,6 +149,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Import a receipt'), findsOneWidget);
       expect(find.text('Insights'), findsOneWidget);
+      expect(find.text('THE COST OF CONVENIENCE'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await screenshot(tester, 'dashboard-redesign');
     },

@@ -8,6 +8,7 @@ import 'api.dart';
 import 'widgets.dart';
 import 'order_filters.dart';
 import 'design.dart';
+import 'fees.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -387,6 +388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     data = Future.wait([
       ref.read(apiProvider).get('analytics/overview/', query: query),
       ref.read(apiProvider).get('orders/', query: query),
+      ref.read(apiProvider).get('analytics/fees/'),
     ]);
   }
 
@@ -398,10 +400,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next),
-            behavior: SnackBarBehavior.floating,
-          ),
+          SnackBar(content: Text(next), behavior: SnackBarBehavior.floating),
         );
         ref.read(homeBannerProvider.notifier).state = null;
       });
@@ -411,7 +410,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       retry: () => setState(load),
       builder: (result) {
         final summary = result[0] as Json,
-            recent = result[1]['results'] as List;
+            recent = result[1]['results'] as List,
+            fees = Json.from(result[2] as Map);
         return RefreshIndicator(
           onRefresh: () async {
             setState(load);
@@ -533,10 +533,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
               ),
+              FeeHighlight(data: fees, onTap: () => context.push('/fees')),
               InkWell(
                 borderRadius: BorderRadius.circular(22),
-                onTap: () =>
-                    ref.read(shellTabProvider.notifier).state = 2,
+                onTap: () => ref.read(shellTabProvider.notifier).state = 2,
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -618,25 +618,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           trailing: Text(rupees(platform['amount'])),
                         ),
-                  ],
-                ),
-              ),
-              Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'The little extras',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Delivery ${rupees(summary['delivery_fee'])}  ·  Handling ${rupees(summary['handling_fee'])}',
-                    ),
-                    Text(
-                      '${summary['delivery_fee_unknown_count']} delivery and ${summary['handling_fee_unknown_count']} handling values unknown',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
                   ],
                 ),
               ),
@@ -820,9 +801,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     ])
                       DropdownMenuItem(
                         value: p,
-                        child: Text(
-                          p.isEmpty ? 'All shops' : platformLabel(p),
-                        ),
+                        child: Text(p.isEmpty ? 'All shops' : platformLabel(p)),
                       ),
                   ],
                   onChanged: (v) => setState(() {
@@ -1134,13 +1113,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   for (final theme in ['system', 'light', 'dark'])
                     DropdownMenuItem(
                       value: theme,
-                      child: Text(
-                        switch (theme) {
-                          'light' => 'Light',
-                          'dark' => 'Dark',
-                          _ => 'Match device',
-                        },
-                      ),
+                      child: Text(switch (theme) {
+                        'light' => 'Light',
+                        'dark' => 'Dark',
+                        _ => 'Match device',
+                      }),
                     ),
                 ],
                 onChanged: busy

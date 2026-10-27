@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
-from .services import scoped_orders, totals, grouped, products
+from .services import scoped_orders, totals, grouped, products, fee_insights
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from drf_spectacular.types import OpenApiTypes
 
@@ -12,11 +12,13 @@ from drf_spectacular.types import OpenApiTypes
 @extend_schema_view(get=extend_schema(responses=OpenApiTypes.OBJECT))
 class AnalyticsView(APIView):
     def get(self, request, kind):
-        if kind not in ['overview', 'monthly', 'weekly', 'platforms', 'categories', 'products']:
+        if kind not in ['overview', 'monthly', 'weekly', 'platforms', 'categories', 'products', 'fees']:
             raise NotFound()
         orders = scoped_orders(request.user, request.query_params)
         if kind == 'products':
             return Response(products(orders))
+        if kind == 'fees':
+            return Response(fee_insights(orders, timezone.localdate()))
         if kind != 'overview':
             return Response(grouped(orders, kind))
         first = timezone.localdate().replace(day=1)
