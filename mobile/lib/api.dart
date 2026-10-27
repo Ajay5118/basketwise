@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,12 +8,16 @@ final apiProvider = Provider((ref) => Api());
 final sessionProvider = StateProvider<bool>((ref) => false);
 final revisionProvider = StateProvider<int>((ref) => 0);
 final themeProvider = StateProvider<String>((ref) => 'system');
+final shellTabProvider = StateProvider<int>((ref) => 0);
+final homeBannerProvider = StateProvider<String?>((ref) => null);
 
 class Api {
-  static const base = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'http://10.0.2.2:8000/api/v1/',
-  );
+  static const _configuredBase = String.fromEnvironment('API_URL');
+  static String get base => _configuredBase.isNotEmpty
+      ? _configuredBase
+      : !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+      ? 'http://10.0.2.2:8000/api/v1/'
+      : 'http://localhost:8000/api/v1/';
   final Dio dio = Dio(
     BaseOptions(
       baseUrl: base,
@@ -150,7 +154,58 @@ class Api {
 
 String errorText(Object error) {
   if (error is DioException) {
-    if (error.response != null) return jsonEncode(error.response!.data);
+    final status = error.response?.statusCode;
+    if (status == 401) {
+      return error.requestOptions.path.contains('auth/login')
+          ? 'The email or password is incorrect. Please try again.'
+          : 'Your session has expired. Please sign in again.';
+    }
+    if (status == 413) {
+      return 'This file is too large. Choose a receipt under 10 MB.';
+    }
+    if (status == 429) {
+      return 'Too many attempts. Please wait a little before trying again.';
+    }
+    if (status != null && status >= 500) {
+      return 'BasketWise is having trouble processing this request. Please try again shortly.';
+    }
+    final data = error.response?.data;
+    if (data is Map) {
+      final messages = <String>[];
+      void collect(dynamic value, [String? field]) {
+        if (value is Map) {
+          for (final entry in value.entries) {
+            collect(entry.value, entry.key.toString());
+          }
+        } else if (value is List) {
+          for (final item in value) {
+            collect(item, field);
+          }
+        } else if (value is String && value.trim().isNotEmpty) {
+          final prefix =
+              field == null ||
+                  ['detail', 'error', 'non_field_errors'].contains(field)
+              ? ''
+              : '${field.replaceAll('_', ' ')}: ';
+          messages.add('$prefix$value');
+        }
+      }
+
+      collect(data);
+      if (messages.isNotEmpty) return messages.join('\n');
+    }
+    if (status != null) {
+      return 'We couldn’t complete that request. Please check the details and try again.';
+    }
+    if ([
+      DioExceptionType.connectionTimeout,
+      DioExceptionType.receiveTimeout,
+      DioExceptionType.sendTimeout,
+    ].contains(error.type)) {
+      return error.requestOptions.path.contains('receipts/')
+          ? 'The connection is taking too long. Your receipt may still be processing. Refresh before uploading again.'
+          : 'The connection is taking too long. Please try again.';
+    }
     return 'Could not reach BasketWise. Check your connection and try again.';
   }
   return error.toString().replaceFirst('Bad state: ', '');

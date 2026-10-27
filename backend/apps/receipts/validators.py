@@ -40,9 +40,8 @@ def financial_warnings(data):
             warnings.append('Product totals do not equal item subtotal.')
     fields = ['item_subtotal', 'handling_fee', 'delivery_fee', 'packaging_fee', 'taxes', 'discount']
     if total is not None and all(data.get(f) is not None for f in fields):
-        calculated = sum(Decimal(str(data[f])) for f in fields[:-1]) - Decimal(str(data['discount']))
+        # Most invoices have no extra fees, so other_fees only joins the sum when stated.
+        calculated = sum(Decimal(str(data[f])) for f in fields[:-1]) + Decimal(str(data.get('other_fees') or 0)) - Decimal(str(data['discount']))
         if abs(calculated - Decimal(str(total))) > Decimal('.01'):
             warnings.append('Fees, discount and subtotal do not reconcile with grand total.')
-    else:
-        warnings.append('Some financial components are unknown; complete reconciliation is unavailable.')
     return warnings

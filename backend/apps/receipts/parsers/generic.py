@@ -1,11 +1,12 @@
 import re
 from decimal import Decimal, ROUND_HALF_UP
+from .tax_invoice import enrich
 
 MONEY = r'(?:₹|Rs\.?|INR)?\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)'
 
 
 def parse(text, platform='other'):
-    result = {'platform': platform, 'currency': 'INR' if re.search(r'₹|\bINR\b|\bRs\.?', text, re.I) else None, 'status': 'unknown', 'external_order_id': None, 'order_date': None, 'items': [], 'provenance': {}, 'warnings': []}
+    result = {'platform': platform, 'currency': 'INR' if re.search(r'₹|\bINR\b|\bRs\.?', text, re.I) else None, 'status': 'unknown', 'external_order_id': None, 'order_date': None, 'other_fees': None, 'items': [], 'provenance': {}, 'warnings': []}
     for key, labels in {'item_subtotal': ['item subtotal', 'subtotal'], 'handling_fee': ['handling fee', 'handling charge'], 'delivery_fee': ['delivery fee', 'delivery charge'], 'packaging_fee': ['packaging fee'], 'taxes': ['taxes', 'tax'], 'discount': ['discount'], 'grand_total': ['grand total', 'total paid', 'bill total']}.items():
         result[key] = None
         for label in labels:
@@ -35,9 +36,10 @@ def parse(text, platform='other'):
         if quantity <= 0:
             continue
         result['items'].append({'name': name.strip(), 'quantity': str(quantity), 'line_total': format(total, '.2f'), 'unit_price': format((total / quantity).quantize(Decimal('.01'), rounding=ROUND_HALF_UP), '.2f'), 'unit_price_derived': True, 'category': 'Uncategorized'})
+    enrich(result, text)
     if not result['items']:
-        result['warnings'].append('No supported product rows found. Enter products manually.')
-    for key in ['order_date', 'grand_total', 'item_subtotal', 'currency']:
-        if result[key] is None:
-            result['warnings'].append(f'{key} is unknown; review required.')
+        result['warnings'].append('No supported product rows found. Add products manually before saving.')
+    missing = [label for key, label in [('order_date', 'purchase date'), ('grand_total', 'total paid')] if result[key] is None]
+    if missing:
+        result['warnings'].append(f"Please confirm {' and '.join(missing)} before saving.")
     return result

@@ -22,7 +22,7 @@ def totals(orders):
     gross = sum((o.grand_total for o in orders), ZERO)
     refunds = sum((o.refunded_amount for o in orders), ZERO)
     result = {'gross_spending': gross, 'net_spending': gross-refunds, 'confirmed_refunds': refunds, 'order_count': len(orders), 'average_order_value': (gross/len(orders)).quantize(Decimal('.01')) if orders else ZERO}
-    for field in ['item_subtotal', 'handling_fee', 'delivery_fee', 'discount']:
+    for field in ['item_subtotal', 'handling_fee', 'delivery_fee', 'other_fees', 'discount']:
         known = [getattr(o, field) for o in orders if getattr(o, field) is not None]
         result[field] = sum(known, ZERO)
         result[field + '_unknown_count'] = len(orders) - len(known)

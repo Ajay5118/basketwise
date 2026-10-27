@@ -3,7 +3,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.lock.txt .
-RUN pip install --no-cache-dir -r requirements.lock.txt
+RUN pip install --no-cache-dir --timeout 60 --retries 5 pip==25.3
+RUN pip install --no-cache-dir --progress-bar off --timeout 60 --retries 5 --resume-retries 10 -r requirements.lock.txt
 COPY . .
 RUN useradd --create-home basketwise && mkdir -p /app/private-media && chown -R basketwise:basketwise /app
 USER basketwise

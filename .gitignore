@@ -11,3 +11,4 @@ android/local.properties
 *.iml
 .pytest_cache/
 .idea/
+.kotlin/

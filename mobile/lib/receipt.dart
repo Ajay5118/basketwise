@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'api.dart';
 import 'widgets.dart';
+import 'design.dart';
 
 class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
@@ -19,6 +20,7 @@ class ScanScreen extends ConsumerStatefulWidget {
 class _ScanScreenState extends ConsumerState<ScanScreen> {
   bool busy = false;
   double progress = 0;
+  Timer? draftTimer;
   String message = '';
   StreamSubscription<List<SharedMediaFile>>? shared;
   final List<Json> uploads = [];
@@ -26,6 +28,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void initState() {
     super.initState();
     refreshDrafts();
+    draftTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (uploads.any((r) => ['queued', 'processing'].contains(r['status']))) {
+        refreshDrafts();
+      }
+    });
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       shared = ReceiveSharingIntent.instance.getMediaStream().listen(
         importShared,
@@ -53,6 +60,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void dispose() {
     shared?.cancel();
+    draftTimer?.cancel();
     super.dispose();
   }
 
@@ -125,90 +133,265 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => PageBody(
-    title: 'A receipt today.\nClarity tomorrow.',
-    subtitle: 'Import, review, and make it yours.',
-    children: [
-      Panel(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.document_scanner_outlined, size: 48),
+  Widget build(BuildContext context) => RefreshIndicator(
+    onRefresh: refreshDrafts,
+    child: PageBody(
+      title: 'A little receipt.\nA lot of clarity.',
+      subtitle: 'Add a receipt. We’ll help you put it in perspective.',
+      action: IconButton(
+        tooltip: 'Refresh receipts',
+        onPressed: refreshDrafts,
+        icon: const Icon(Icons.refresh_rounded),
+      ),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: .22),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Bring your baskets together',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Choose an invoice PDF or a clear receipt photo. You always review the details before anything is saved.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: busy ? null : pickFiles,
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Choose receipts'),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              children: [
-                TextButton.icon(
-                  onPressed: busy ? null : () => pickImage(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('Camera'),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: .45),
+                    borderRadius: BorderRadius.circular(27),
+                  ),
+                  child: Icon(
+                    Icons.document_scanner_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 38,
+                  ),
                 ),
-                TextButton.icon(
-                  onPressed: busy ? null : () => pickImage(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Gallery'),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                'Let’s unpack your basket',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 9),
+              Text(
+                'Upload an invoice PDF or a clear photo. Review the details before saving your purchase.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.6,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: busy ? null : pickFiles,
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text('Choose receipts'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => pickImage(ImageSource.camera),
+                      icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                      label: const Text('Camera'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => pickImage(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_outlined, size: 18),
+                      label: const Text('Gallery'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'PDF, JPG or PNG · Up to 10 MB · 10 pages',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontSize: 10),
+              ),
+            ],
+          ),
+        ),
+        if (busy)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(value: progress, minHeight: 6),
+          ),
+        if (message.isNotEmpty)
+          Text(message, style: Theme.of(context).textTheme.bodySmall),
+        const SoftNotice(
+          icon: Icons.lightbulb_outline_rounded,
+          title: 'A clear photo makes all the difference',
+          text:
+              'Lay the invoice flat, include every edge and keep the text in focus. Use the original PDF when available.',
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Your receipts',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            Text(
+              '${uploads.length} imported',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        if (uploads.isEmpty)
+          const Panel(
+            child: Column(
+              children: [
+                Icon(Icons.receipt_long_outlined, size: 30),
+                SizedBox(height: 12),
+                Text(
+                  'Your first receipt starts here',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 5),
+                Text(
+                  'Imported receipts and their reading status will appear here.',
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'PDF, JPG or PNG · up to 10 MB · 10 PDF pages',
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
+        for (final receipt in uploads)
+          ReceiptDraftTile(
+            receipt: receipt,
+            onTap: () async {
+              await context.push('/review/${receipt['id']}');
+              await refreshDrafts();
+            },
+          ),
+        const SoftNotice(
+          icon: Icons.shield_outlined,
+          title: 'Private from the first upload',
+          text:
+              'No merchant passwords or inbox access. Unreadable details stay unknown until you fill them in.',
         ),
+      ],
+    ),
+  );
+}
+
+class ReceiptDraftTile extends StatelessWidget {
+  final Json receipt;
+  final VoidCallback onTap;
+  const ReceiptDraftTile({
+    super.key,
+    required this.receipt,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final status = receipt['status'];
+    final (label, icon, color) = switch (status) {
+      'queued' => (
+        'Waiting to read',
+        Icons.hourglass_empty_rounded,
+        const Color(0xff977025),
       ),
-      if (busy) LinearProgressIndicator(value: progress),
-      if (message.isNotEmpty) Text(message),
-      for (final receipt in uploads)
-        Panel(
-          child: ListTile(
-            leading: const Icon(Icons.receipt_outlined),
-            title: Text('Receipt #${receipt['id']}'),
-            subtitle: const Text('Open to see processing status and review'),
-            trailing: const Icon(Icons.arrow_forward),
-            onTap: () => context.push('/review/${receipt['id']}'),
+      'processing' => (
+        'Reading your receipt',
+        Icons.document_scanner_outlined,
+        BasketStyle.green,
+      ),
+      'review' => (
+        'Check extracted details',
+        Icons.edit_note_rounded,
+        BasketStyle.green,
+      ),
+      'confirmed' => (
+        'Saved to your orders',
+        Icons.check_circle_outline_rounded,
+        BasketStyle.green,
+      ),
+      'failed' => (
+        'Needs another look',
+        Icons.info_outline_rounded,
+        const Color(0xffb64d38),
+      ),
+      _ => ('Open receipt', Icons.receipt_long_outlined, BasketStyle.green),
+    };
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: color, size: 23),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Receipt #${receipt['id']}',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (status == 'failed')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          receipt['processing_error']?.toString().isNotEmpty ==
+                                  true
+                              ? receipt['processing_error'].toString()
+                              : 'Open for retry options.',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, size: 20),
+            ],
           ),
         ),
-      const Panel(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.shield_outlined),
-            SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                'Private by design. No merchant passwords, inbox access or automatic verification. Unreadable fields stay unknown.',
-              ),
-            ),
-          ],
-        ),
       ),
-    ],
-  );
+    );
+  }
 }
 
 class ReviewScreen extends ConsumerStatefulWidget {
@@ -223,6 +406,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   Json? receipt;
   Object? error;
   bool polling = false;
+  bool manualEntry = false;
   @override
   void initState() {
     super.initState();
@@ -248,7 +432,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         receipt = Json.from(result);
         error = null;
       });
-      if (!['queued', 'processing'].contains(result['status'])) timer?.cancel();
+      if (!['queued', 'processing'].contains(result['status'])) {
+        timer?.cancel();
+      } else if (timer?.isActive != true) {
+        timer = Timer.periodic(const Duration(seconds: 2), (_) => poll());
+      }
     } catch (e) {
       if (mounted) setState(() => error = e);
       timer?.cancel();
@@ -257,24 +445,94 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     }
   }
 
+  Future<void> retryExtraction() async {
+    try {
+      await ref.read(apiProvider).post('receipts/${widget.id}/retry/', {});
+      if (!mounted) return;
+      setState(() {
+        manualEntry = false;
+        receipt = {...?receipt, 'status': 'processing'};
+      });
+      await poll();
+      timer?.cancel();
+      if (receipt != null &&
+          ['queued', 'processing'].contains(receipt!['status'])) {
+        timer = Timer.periodic(const Duration(seconds: 2), (_) => poll());
+      }
+    } catch (error) {
+      if (mounted) showError(context, error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = receipt?['status'];
+    final extracted = receipt?['data'] as Map?;
+    final emptyExtraction =
+        status == 'review' &&
+        ((extracted?['items'] as List?)?.isEmpty ?? true) &&
+        extracted?['grand_total'] == null;
     return Scaffold(
       appBar: AppBar(title: const Text('Review receipt')),
       body: error != null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(errorText(error!)),
-                  TextButton(onPressed: poll, child: const Text('Retry')),
-                ],
-              ),
+          ? FlowStatus(
+              icon: Icons.cloud_off_outlined,
+              title: 'Couldn’t load this receipt',
+              message: errorText(error!),
+              actions: [
+                FilledButton(onPressed: poll, child: const Text('Try again')),
+              ],
+            )
+          : emptyExtraction && !manualEntry
+          ? PageBody(
+              showBranding: false,
+              title: 'This one needs\na little help.',
+              subtitle: 'We couldn’t read the invoice details clearly.',
+              children: [
+                const SoftNotice(
+                  icon: Icons.document_scanner_outlined,
+                  title: 'Your upload arrived safely',
+                  text:
+                      'The photo was received, but we couldn’t find usable products or a total. Nothing has been added to your spending.',
+                ),
+                const Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Try a clearer copy',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Use the original invoice PDF if you have it. For a photo, include the full invoice, keep the camera straight, and make sure small text is sharp.',
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => setState(() => manualEntry = true),
+                  icon: const Icon(Icons.edit_note_rounded),
+                  label: const Text('Enter details manually'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Back to your baskets'),
+                ),
+                TextButton(
+                  onPressed: retryExtraction,
+                  child: const Text('Try reading this receipt again'),
+                ),
+              ],
             )
           : status == 'review'
           ? OrderEditor(
               initial: Json.from(receipt!['data']),
+              compact: true,
               submitLabel: 'Confirm and save',
               onSave: (data) async {
                 await ref.read(apiProvider).post(
@@ -282,56 +540,53 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   {...data, 'reviewed': true, 'acknowledge_warnings': true},
                 );
                 ref.read(revisionProvider.notifier).state++;
+                ref.read(homeBannerProvider.notifier).state =
+                    'Purchase saved — it’s now in your spending.';
+                ref.read(shellTabProvider.notifier).state = 0;
                 if (context.mounted) context.go('/');
               },
             )
           : status == 'confirmed'
-          ? Center(
-              child: FilledButton(
-                onPressed: () => context.go('/orders/${receipt!['order_id']}'),
-                child: const Text('View saved order'),
-              ),
+          ? FlowStatus(
+              icon: Icons.check_circle_rounded,
+              title: 'Already saved',
+              message: 'This receipt is linked to an order in your history.',
+              actions: [
+                FilledButton(
+                  onPressed: () =>
+                      context.go('/orders/${receipt!['order_id']}'),
+                  child: const Text('View order'),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/'),
+                  child: const Text('Back to Home'),
+                ),
+              ],
             )
           : status == 'failed'
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(receipt!['error']),
-                    const SizedBox(height: 18),
-                    FilledButton(
-                      onPressed: () async {
-                        try {
-                          await ref
-                              .read(apiProvider)
-                              .post('receipts/${widget.id}/retry/', {});
-                          await poll();
-                          timer = Timer.periodic(
-                            const Duration(seconds: 2),
-                            (_) => poll(),
-                          );
-                        } catch (e) {
-                          if (context.mounted) showError(context, e);
-                        }
-                      },
-                      child: const Text('Retry extraction'),
-                    ),
-                  ],
+          ? FlowStatus(
+              icon: Icons.document_scanner_outlined,
+              title: 'Couldn’t read this file',
+              message:
+                  receipt!['error']?.toString() ??
+                  'Try a clearer PDF or photo, or enter details manually.',
+              actions: [
+                FilledButton(
+                  onPressed: retryExtraction,
+                  child: const Text('Try again'),
                 ),
-              ),
+                TextButton(
+                  onPressed: () => setState(() => manualEntry = true),
+                  child: const Text('Enter manually'),
+                ),
+              ],
             )
-          : const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text('Reading your receipt…'),
-                  Text('You can return while processing continues.'),
-                ],
-              ),
+          : FlowStatus(
+              loading: true,
+              icon: Icons.hourglass_top_rounded,
+              title: 'Reading your receipt',
+              message:
+                  'This usually takes a few seconds. You can leave and come back.',
             ),
     );
   }
@@ -341,11 +596,13 @@ class OrderEditor extends StatefulWidget {
   final Json initial;
   final String submitLabel;
   final Future<void> Function(Json) onSave;
+  final bool compact;
   const OrderEditor({
     super.key,
     required this.initial,
     required this.onSave,
     required this.submitLabel,
+    this.compact = true,
   });
   @override
   State<OrderEditor> createState() => _OrderEditorState();
@@ -356,13 +613,14 @@ class _OrderEditorState extends State<OrderEditor> {
   final Map<String, TextEditingController> fields = {};
   final List<Map<String, TextEditingController>> items = [];
   final List<bool> derived = [];
-  bool reviewed = false, busy = false;
+  bool reviewed = false, busy = false, showAdvanced = false;
   late String platform, status;
   static const moneyFields = [
     'item_subtotal',
     'handling_fee',
     'delivery_fee',
     'packaging_fee',
+    'other_fees',
     'taxes',
     'discount',
     'grand_total',
@@ -372,6 +630,9 @@ class _OrderEditorState extends State<OrderEditor> {
     super.initState();
     platform = widget.initial['platform'] ?? 'other';
     status = widget.initial['status'] ?? 'unknown';
+    if (widget.compact && status == 'unknown') {
+      status = 'delivered';
+    }
     for (final key in ['external_order_id', 'order_date', ...moneyFields]) {
       fields[key] = TextEditingController(
         text: widget.initial[key]?.toString() ?? '',
@@ -413,16 +674,62 @@ class _OrderEditorState extends State<OrderEditor> {
     super.dispose();
   }
 
-  String label(String key) =>
-      key.split('_').map((s) => s[0].toUpperCase() + s.substring(1)).join(' ');
+  String label(String key) => switch (key) {
+    'order_date' => 'Purchase date',
+    'grand_total' => 'Total paid (₹)',
+    'external_order_id' => 'Order ID (optional)',
+    'item_subtotal' => 'Item subtotal (optional)',
+    'handling_fee' => 'Handling fee (optional)',
+    'delivery_fee' => 'Delivery fee (optional)',
+    'packaging_fee' => 'Packaging fee (optional)',
+    'other_fees' => 'Other fees — small cart, surge (optional)',
+    'taxes' => 'Taxes (optional)',
+    'discount' => 'Discount (optional)',
+    _ =>
+      key.split('_').map((s) => s[0].toUpperCase() + s.substring(1)).join(' '),
+  };
+
+  Iterable<String> itemFieldKeys() => widget.compact
+      ? ['name', 'quantity', 'line_total']
+      : ['name', 'quantity', 'unit_price', 'line_total', 'category'];
+
+  Widget moneyField(String key) => TextFormField(
+    controller: fields[key],
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    decoration: InputDecoration(
+      labelText: label(key),
+      hintText: 'Leave blank if unknown',
+      helperText: widget.initial[key] == null
+          ? 'Not found on receipt'
+          : 'Read from receipt — change only if wrong',
+    ),
+    validator: (value) {
+      if (key == 'grand_total' && (value == null || value.isEmpty)) {
+        return 'Enter the total from your invoice';
+      }
+      if (value != null &&
+          value.isNotEmpty &&
+          !RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(value)) {
+        return 'Use a valid amount (e.g. 286.00)';
+      }
+      return null;
+    },
+  );
+
   Future<void> save() async {
     if (!form.currentState!.validate() || !reviewed) return;
     final warnings = (widget.initial['warnings'] as List?) ?? [];
     final duplicates = (widget.initial['potential_duplicates'] as List?) ?? [];
+    final warningText = warnings.isEmpty ? '' : '\n\n${warnings.join('\n')}';
+    final duplicateText = duplicates.isEmpty
+        ? ''
+        : '\nPossible duplicate order: ${duplicates.join(', ')}.';
     if (!await approve(
       context,
-      'Save reviewed purchase?',
-      'Confirm that you checked every field. Unknown values remain unknown. Financial warnings may remain where components are missing.${warnings.isEmpty ? '' : '\n\n${warnings.join('\n')}'}${duplicates.isEmpty ? '' : '\nPotential duplicate order IDs: ${duplicates.join(', ')}. Saving could count the purchase twice.'}',
+      widget.compact ? 'Save this purchase?' : 'Save reviewed purchase?',
+      widget.compact
+          ? 'This adds the total to your spending. Check the date, total and products first.$warningText$duplicateText'
+          : 'Confirm that you checked every field. Unknown values remain unknown.$warningText$duplicateText',
     )) {
       return;
     }
@@ -443,6 +750,9 @@ class _OrderEditorState extends State<OrderEditor> {
                 entry.key: entry.value.text.trim().isEmpty
                     ? null
                     : entry.value.text.trim(),
+              'category': items[i]['category']?.text.trim().isNotEmpty == true
+                  ? items[i]['category']!.text.trim()
+                  : 'Uncategorized',
               'unit_price_derived': derived[i],
             },
         ],
@@ -454,173 +764,329 @@ class _OrderEditorState extends State<OrderEditor> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) => Form(
-    key: form,
-    child: PageBody(
-      title: 'Check the details.',
-      subtitle:
-          'Blank fields are unknown. Correct anything that needs attention.',
-      children: [
-        if ((widget.initial['warnings'] as List?)?.isNotEmpty == true)
-          Panel(
-            child: Text(
-              (widget.initial['warnings'] as List).join('\n'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+  void quickAdd(String category) => setState(
+    () => addItem({'name': category, 'quantity': '1', 'category': category}),
+  );
+
+  Widget categoryPicker(int index) {
+    final controller = items[index]['category']!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final (name, icon) in productCategories)
+            ChoiceChip(
+              avatar: Icon(icon, size: 18),
+              label: Text(name),
+              selected: controller.text == name,
+              onSelected: (selected) => setState(
+                () => controller.text = selected ? name : 'Uncategorized',
+              ),
             ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> buildProductEditors() {
+    return [
+      Text('Products', style: Theme.of(context).textTheme.titleLarge),
+      Text(
+        'Quick add — tap what you bought, then enter its amount.',
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final (name, icon) in productCategories)
+            ActionChip(
+              avatar: Icon(icon, size: 18),
+              label: Text(name),
+              onPressed: () => quickAdd(name),
+            ),
+        ],
+      ),
+      for (var index = 0; index < items.length; index++)
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text('Product ${index + 1}')),
+                  IconButton(
+                    tooltip: 'Remove product',
+                    onPressed: () => setState(() {
+                      final removed = items.removeAt(index);
+                      derived.removeAt(index);
+                      for (final controller in removed.values) {
+                        controller.dispose();
+                      }
+                    }),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              categoryPicker(index),
+              for (final key in itemFieldKeys())
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: TextFormField(
+                    controller: items[index][key],
+                    keyboardType:
+                        ['quantity', 'unit_price', 'line_total'].contains(key)
+                        ? const TextInputType.numberWithOptions(decimal: true)
+                        : TextInputType.text,
+                    decoration: InputDecoration(
+                      labelText: label(key),
+                      helperText: key == 'unit_price' && derived[index]
+                          ? 'Derived from line total ÷ quantity'
+                          : null,
+                    ),
+                    onChanged: (_) {
+                      if (key == 'unit_price') {
+                        setState(() => derived[index] = false);
+                      } else if (key == 'category') {
+                        setState(() {});
+                      }
+                    },
+                    validator: (value) {
+                      if (key == 'name') {
+                        return value == null || value.trim().isEmpty
+                            ? 'Product name is required'
+                            : null;
+                      }
+                      if (!widget.compact && key == 'category') {
+                        return value == null || value.trim().isEmpty
+                            ? 'Required'
+                            : null;
+                      }
+                      if (value == null || value.isEmpty) return null;
+                      final number = num.tryParse(value);
+                      if (number == null ||
+                          !number.isFinite ||
+                          number < 0 ||
+                          (key == 'quantity' && number == 0)) {
+                        return 'Enter a valid positive value';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+            ],
           ),
-        DropdownButtonFormField<String>(
-          initialValue: platform,
-          decoration: const InputDecoration(labelText: 'Platform'),
-          items: [
-            for (final value in [
-              'instamart',
-              'blinkit',
-              'zepto',
-              'bigbasket',
-              'other',
-            ])
-              DropdownMenuItem(value: value, child: Text(value)),
-          ],
-          onChanged: (v) => setState(() => platform = v!),
         ),
-        DropdownButtonFormField<String>(
-          initialValue: status,
-          decoration: const InputDecoration(labelText: 'Status'),
-          items: [
-            for (final value in [
-              'unknown',
-              'delivered',
-              'pending',
-              'cancelled',
-              'refunded',
-            ])
-              DropdownMenuItem(value: value, child: Text(value)),
-          ],
-          onChanged: (v) => setState(() => status = v!),
+      OutlinedButton.icon(
+        onPressed: () => setState(() => addItem()),
+        icon: const Icon(Icons.add),
+        label: const Text('Add product'),
+      ),
+      if (items.isEmpty)
+        Text(
+          'Add at least one product from your receipt.',
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
-        for (final entry in fields.entries)
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = widget.compact;
+    final optionalFees = [
+      'item_subtotal',
+      'handling_fee',
+      'delivery_fee',
+      'packaging_fee',
+      'other_fees',
+      'taxes',
+      'discount',
+    ];
+    final hasExtractedFees = optionalFees.any(
+      (key) => widget.initial[key] != null,
+    );
+    return Form(
+      key: form,
+      child: PageBody(
+        showBranding: !compact,
+        title: compact ? 'Quick review' : 'Check the details.',
+        subtitle: compact
+            ? 'Confirm the purchase date, total and products. Fees and order ID are optional.'
+            : 'You’re in control. Check the date, total and products before saving.',
+        children: [
+          if (compact && platform != 'other')
+            Panel(
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.storefront_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'From ${platformLabel(platform)}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (!compact) ...[
+            const SoftNotice(
+              icon: Icons.fact_check_outlined,
+              title: 'A quick check before it counts',
+              text:
+                  'Blank fields mean we couldn’t read them. Add products and correct the details from your invoice. Nothing counts toward spending until you confirm.',
+            ),
+          ],
+          if ((widget.initial['warnings'] as List?)?.isNotEmpty == true)
+            Panel(
+              child: Text(
+                (widget.initial['warnings'] as List).join('\n'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          if (!compact) ...[
+            DropdownButtonFormField<String>(
+              initialValue: platform,
+              decoration: const InputDecoration(labelText: 'Platform'),
+              items: [
+                for (final value in [
+                  'instamart',
+                  'blinkit',
+                  'zepto',
+                  'bigbasket',
+                  'other',
+                ])
+                  DropdownMenuItem(value: value, child: Text(value)),
+              ],
+              onChanged: (v) => setState(() => platform = v!),
+            ),
+            DropdownButtonFormField<String>(
+              initialValue: status,
+              decoration: const InputDecoration(labelText: 'Status'),
+              items: [
+                for (final value in [
+                  'unknown',
+                  'delivered',
+                  'pending',
+                  'cancelled',
+                  'refunded',
+                ])
+                  DropdownMenuItem(value: value, child: Text(value)),
+              ],
+              onChanged: (v) => setState(() => status = v!),
+            ),
+          ],
           TextFormField(
-            controller: entry.value,
-            keyboardType: moneyFields.contains(entry.key)
-                ? const TextInputType.numberWithOptions(decimal: true)
-                : TextInputType.text,
+            controller: fields['order_date'],
             decoration: InputDecoration(
-              labelText: label(entry.key),
-              hintText: entry.key == 'order_date' ? 'YYYY-MM-DD' : 'Unknown',
-              helperText: widget.initial[entry.key] == null
-                  ? 'Missing in document — verify before entering'
-                  : null,
+              labelText: label('order_date'),
+              hintText: 'YYYY-MM-DD',
+              helperText: widget.initial['order_date'] == null
+                  ? 'Usually not on the invoice — pick the delivery or purchase date'
+                  : 'Read from receipt — change only if wrong',
             ),
             validator: (value) {
-              if (entry.key == 'order_date') {
-                final parsed = DateTime.tryParse(value ?? '');
-                if (parsed == null ||
-                    parsed.toIso8601String().substring(0, 10) != value) {
-                  return 'Enter a valid date as YYYY-MM-DD';
-                }
-              }
-              if (entry.key == 'grand_total' &&
-                  (value == null || value.isEmpty)) {
-                return 'Grand total is required';
-              }
-              if (moneyFields.contains(entry.key) &&
-                  value != null &&
-                  value.isNotEmpty &&
-                  !RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(value)) {
-                return 'Enter a nonnegative amount with at most two decimals';
+              final parsed = DateTime.tryParse(value ?? '');
+              if (parsed == null ||
+                  parsed.toIso8601String().substring(0, 10) != value) {
+                return 'Enter a valid date as YYYY-MM-DD';
               }
               return null;
             },
           ),
-        Text('Products', style: Theme.of(context).textTheme.titleLarge),
-        for (var index = 0; index < items.length; index++)
-          Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          moneyField('grand_total'),
+          ...buildProductEditors(),
+          if (compact)
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              initiallyExpanded: showAdvanced || hasExtractedFees,
+              onExpansionChanged: (value) =>
+                  setState(() => showAdvanced = value),
+              title: Text(
+                'Optional details',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              subtitle: const Text(
+                'Order ID, fees and platform — only if you want to refine analytics',
+              ),
               children: [
-                Row(
-                  children: [
-                    Expanded(child: Text('Product ${index + 1}')),
-                    IconButton(
-                      tooltip: 'Remove product',
-                      onPressed: () => setState(() {
-                        final removed = items.removeAt(index);
-                        derived.removeAt(index);
-                        for (final controller in removed.values) {
-                          controller.dispose();
-                        }
-                      }),
-                      icon: const Icon(Icons.close),
-                    ),
+                DropdownButtonFormField<String>(
+                  initialValue: platform,
+                  decoration: const InputDecoration(labelText: 'Platform'),
+                  items: [
+                    for (final value in [
+                      'instamart',
+                      'blinkit',
+                      'zepto',
+                      'bigbasket',
+                      'other',
+                    ])
+                      DropdownMenuItem(value: value, child: Text(value)),
                   ],
+                  onChanged: (v) => setState(() => platform = v!),
                 ),
-                for (final entry in items[index].entries)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: TextFormField(
-                      controller: entry.value,
-                      decoration: InputDecoration(
-                        labelText: label(entry.key),
-                        helperText: entry.key == 'unit_price' && derived[index]
-                            ? 'Derived from line total ÷ quantity'
-                            : null,
-                      ),
-                      onChanged: (_) {
-                        if (entry.key == 'unit_price') {
-                          setState(() => derived[index] = false);
-                        }
-                      },
-                      validator: (value) {
-                        if (['name', 'category'].contains(entry.key)) {
-                          return value == null || value.trim().isEmpty
-                              ? 'Required'
-                              : null;
-                        }
-                        if (value == null || value.isEmpty) return null;
-                        final number = num.tryParse(value);
-                        if (number == null ||
-                            !number.isFinite ||
-                            number < 0 ||
-                            (entry.key == 'quantity' && number == 0)) {
-                          return 'Enter a valid positive value';
-                        }
-                        return null;
-                      },
-                    ),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  decoration: const InputDecoration(labelText: 'Order status'),
+                  items: [
+                    for (final value in [
+                      'delivered',
+                      'pending',
+                      'cancelled',
+                      'refunded',
+                    ])
+                      DropdownMenuItem(value: value, child: Text(value)),
+                  ],
+                  onChanged: (v) => setState(() => status = v!),
+                ),
+                TextFormField(
+                  controller: fields['external_order_id'],
+                  decoration: InputDecoration(
+                    labelText: label('external_order_id'),
                   ),
+                ),
+                for (final key in optionalFees) moneyField(key),
               ],
+            )
+          else ...[
+            for (final entry in fields.entries)
+              if (!['order_date', 'grand_total'].contains(entry.key))
+                entry.key == 'external_order_id'
+                    ? TextFormField(
+                        controller: entry.value,
+                        decoration: InputDecoration(
+                          labelText: label(entry.key),
+                        ),
+                      )
+                    : moneyField(entry.key),
+          ],
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: reviewed,
+            onChanged: (v) => setState(() => reviewed = v!),
+            title: Text(
+              compact
+                  ? 'These details match my receipt.'
+                  : 'I reviewed the products, amounts, date and status.',
             ),
           ),
-        OutlinedButton.icon(
-          onPressed: () => setState(() => addItem()),
-          icon: const Icon(Icons.add),
-          label: const Text('Add product'),
-        ),
-        if (items.isEmpty)
-          Text(
-            'At least one product is required.',
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          FilledButton(
+            onPressed: busy || !reviewed || items.isEmpty ? null : save,
+            child: Text(busy ? 'Saving…' : widget.submitLabel),
           ),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          value: reviewed,
-          onChanged: (v) => setState(() => reviewed = v!),
-          title: const Text(
-            'I reviewed the products, amounts, date and status.',
+          TextButton(
+            onPressed: () => Navigator.maybePop(context),
+            child: const Text('Cancel'),
           ),
-        ),
-        FilledButton(
-          onPressed: busy || !reviewed || items.isEmpty ? null : save,
-          child: Text(busy ? 'Saving…' : widget.submitLabel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.maybePop(context),
-          child: const Text('Cancel'),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class DetailScreen extends ConsumerStatefulWidget {
@@ -660,6 +1126,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                   appBar: AppBar(title: const Text('Correct order')),
                   body: OrderEditor(
                     initial: order,
+                    compact: false,
                     submitLabel: 'Save corrections',
                     onSave: (values) async {
                       await ref
@@ -683,7 +1150,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
       builder: (order) => PageBody(
         title: rupees(order['grand_total']),
         subtitle:
-            '${order['platform']} · ${order['order_date']} · ${order['status']}',
+            '${platformLabel(order['platform']?.toString())} · ${order['order_date']} · ${orderStatusLabel(order['status']?.toString())}',
         children: [
           Panel(
             child: Column(
@@ -714,6 +1181,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                   'handling_fee',
                   'delivery_fee',
                   'packaging_fee',
+                  'other_fees',
                   'taxes',
                   'discount',
                   'grand_total',

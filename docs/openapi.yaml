@@ -750,6 +750,11 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
+        other_fees:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
         taxes:
           type: string
           format: decimal
@@ -837,6 +842,7 @@ components:
           nullable: true
         category:
           type: string
+          default: Uncategorized
           maxLength: 80
       required:
       - id
@@ -886,6 +892,11 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
         packaging_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        other_fees:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
@@ -1044,6 +1055,11 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
         packaging_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        other_fees:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$

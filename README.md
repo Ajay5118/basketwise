@@ -22,6 +22,8 @@ docker compose up --build
 
 API: `http://localhost:8000/api/v1/`. Interactive documentation: `http://localhost:8000/api/docs/`. PostgreSQL and Redis are internal to Compose. Private files are not exposed by HTTP. The worker image includes Tesseract. Beat runs daily retention cleanup. Development uses HTTP; configure TLS before production.
 
+See [Docker operation and troubleshooting](docs/DOCKER.md) for service health checks, persistent data, startup ordering and restart commands. The API has no index at `/api/v1/`; use `/api/docs/` to check it in a browser.
+
 ```powershell
 docker compose exec api python manage.py test --settings=config.test_settings
 docker compose exec api python scripts/generate_sample.py
@@ -34,6 +36,28 @@ cd mobile
 flutter pub get
 flutter run --dart-define=API_URL=http://10.0.2.2:8000/api/v1/
 ```
+
+For a physical Android phone connected over USB, enable USB debugging and forward the API port before launching:
+
+```powershell
+# Recommended: start Docker services, forward the port, and launch the app together.
+./scripts/run-android-usb.ps1
+# Optional: connect Flutter debugging and hot reload after the safe update.
+./scripts/run-android-usb.ps1 -Attach
+```
+
+The launcher updates the debug app in place and stops on an installation error without uninstalling it. Existing app data is preserved. With multiple connected devices, pass `-DeviceId`.
+
+For the individual commands:
+
+```powershell
+# From the repository root; Docker services must be running.
+& "$env:LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe" reverse tcp:8000 tcp:8000
+cd mobile
+flutter run --dart-define=API_URL=http://127.0.0.1:8000/api/v1/
+```
+
+Keep the USB connection active and repeat port forwarding after reconnecting the phone or restarting it. `10.0.2.2` is specific to the Android emulator; it does not reach this PC from a physical phone. Changing `API_URL` requires stopping and relaunching Flutter; hot reload does not update compile-time values.
 
 Android emulator uses `10.0.2.2` to reach the host. For a physical device, use a reachable development-server address and add it to `ALLOWED_HOSTS`. Android debug builds allow HTTP; release builds require HTTPS. Browser development: `flutter run -d chrome --web-port=3000 --dart-define=API_URL=http://localhost:8000/api/v1/`. Keep the trailing slash. Secure storage on web requires localhost or HTTPS. Camera and sharing support depend on the device/browser. Android incoming sharing is wired to the Scan screen; open Scan after launching from the share sheet. iOS incoming sharing needs an Xcode Share Extension and is not enabled in this MVP; photo/file selection and outgoing exports are implemented.
 

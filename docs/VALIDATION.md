@@ -1,5 +1,27 @@
 # Verification evidence
 
+## 27 October 2026: bill summary screenshots, other fees, category shortcuts
+
+- New `parsers/bill_summary.py` reads app "Bill Summary" screenshots (Item Total, fees, To Pay). Images get three OCR passes that vote per row; a rupee glyph misread as a leading 2/7 is resolved only when exactly one reading reconciles with the total, otherwise the field stays unknown.
+- One user-uploaded bill summary screenshot was reprocessed in Docker with real Tesseract 5.5: item total, handling, delivery, other fees and total now match the image and reconcile. It has no product rows; no order was created. This is one layout, not general screenshot compatibility.
+- `Order.other_fees` added (migration `orders.0002`), exposed in the API, the confirm flow, reconciliation (only when stated) and analytics overview. OpenAPI regenerated with `--fail-on-warn`.
+- 40 backend tests pass natively (SQLite) and in Docker (PostgreSQL). Synthetic bill-summary fixtures cover voting, ambiguous readings left blank, missing total and mismatch warnings.
+- Flutter analyze clean; 8 tests pass, including quick-add category chips and other fees in the editor. Debug APK installed on a USB Android tablet; manual on-device flow not yet observed.
+
+## 26 October 2026: Docker, invoice recovery and UI redesign
+
+- Docker Compose builds and starts successfully with PostgreSQL, Redis AOF storage, API, receipt worker and scheduler. API and worker readiness checks pass; existing database and uploaded-file volumes are preserved.
+- All 33 backend tests pass inside Docker against PostgreSQL, including real Tesseract image/scanned-PDF tests and synthetic tax-table regressions. Migration checks report no changes, and OpenAPI generation passes with `--fail-on-warn`.
+- The live Flutter test passes against the Docker API and Redis-backed worker with eager mode disabled. It exercises registration, token refresh, PDF upload, asynchronous extraction, review, explicit confirmation and the dashboard, then deletes its own synthetic account.
+- Flutter analysis reports no issues. The ordinary suite passes seven tests, with the opt-in live test skipped in that run and passed separately. New tests cover a narrow login with the keyboard open, dashboard layout, scan controls, unreadable-invoice recovery and API error messages.
+- Login, dashboard, scan and empty-extraction review screenshots were rendered and visually inspected. In-app browser checks could not start because the browser tool failed to initialize.
+- One existing user-uploaded grid invoice was reprocessed after the fix. It now yields one product and a total, currency and order identifier; before the fix these were absent. Its source-file hash is unchanged and no order was confirmed or created. Order date and order status remain unknown for user review. This establishes recovery for that image, not general merchant-format compatibility.
+- The Android USB launcher establishes port forwarding, builds with the phone's loopback API URL, and updates with `adb install -r`. It stops on an installation failure without uninstalling the app.
+
+S3, SMTP delivery, iOS, broad receipt-layout coverage, physical-device camera/share flows and production infrastructure remain outside these checks.
+
+## Initial implementation verification (historical)
+
 Verified locally on Windows, Python 3.12, Flutter 3.35.1 / Dart 3.9, PostgreSQL 16 and Tesseract 5.4. The Windows package installer placed Tesseract at `C:/Program Files/Tesseract-OCR`; native verification selected it with `TESSERACT_CMD`.
 
 - PostgreSQL migrations applied successfully; no missing model migrations.

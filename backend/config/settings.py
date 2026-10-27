@@ -4,8 +4,8 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = os.getenv('DEBUG', '0') == '1'
-SECRET_KEY = os.environ.get('SECRET_KEY', '')
-if not SECRET_KEY:
+SECRET_KEY = os.environ.get('SECRET_KEY', '').strip()
+if not SECRET_KEY or SECRET_KEY.startswith('replace-with-'):
     raise RuntimeError('Set SECRET_KEY to a unique random value')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
 INSTALLED_APPS = ['django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.staticfiles', 'rest_framework', 'rest_framework_simplejwt.token_blacklist', 'drf_spectacular', 'corsheaders', 'apps.accounts', 'apps.orders', 'apps.receipts']
@@ -14,6 +14,16 @@ MIDDLEWARE += ['apps.accounts.middleware.AuditMiddleware']
 if os.getenv('CACHE_REDIS_URL'):
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': os.environ['CACHE_REDIS_URL']}}
 ROOT_URLCONF = 'config.urls'
+TEMPLATES = [{
+    'BACKEND': 'django.template.backends.django.DjangoTemplates',
+    'DIRS': [],
+    'APP_DIRS': True,
+    'OPTIONS': {'context_processors': [
+        'django.template.context_processors.request',
+        'django.contrib.auth.context_processors.auth',
+        'django.contrib.messages.context_processors.messages',
+    ]},
+}]
 WSGI_APPLICATION = 'config.wsgi.application'
 AUTH_USER_MODEL = 'accounts.User'
 AUTH_PASSWORD_VALIDATORS = [{'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'}, {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'}, {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'}]

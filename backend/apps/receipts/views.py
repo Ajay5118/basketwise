@@ -30,6 +30,28 @@ def info(receipt):
     return {'id': receipt.pk, 'status': receipt.extraction_status, 'error': receipt.processing_error, 'order_id': receipt.order_id}
 
 
+def normalize_confirm_payload(extracted, submitted):
+    data = dict(submitted)
+    if extracted:
+        for key in [
+            'platform',
+            'external_order_id',
+            'item_subtotal',
+            'handling_fee',
+            'delivery_fee',
+            'packaging_fee',
+            'other_fees',
+            'taxes',
+            'discount',
+        ]:
+            if data.get(key) in (None, '') and extracted.get(key) not in (None, ''):
+                data[key] = extracted[key]
+    if data.get('status') in (None, '', 'unknown'):
+        data['status'] = 'delivered'
+    data.setdefault('currency', 'INR')
+    return data
+
+
 class ReceiptListSerializer(serializers.ModelSerializer):
     status = serializers.CharField(source='extraction_status')
     class Meta:
@@ -105,7 +127,8 @@ class ReceiptView(APIView):
                     raise ValidationError('Receipt is not ready for review.')
                 if request.data.get('reviewed') is not True:
                     raise ValidationError('Explicit review is required.')
-                serializer = OrderSerializer(data=request.data)
+                payload = normalize_confirm_payload(receipt.extracted_json, request.data)
+                serializer = OrderSerializer(data=payload)
                 serializer.is_valid(raise_exception=True)
                 data = serializer.validated_data
                 warnings = financial_warnings(data)

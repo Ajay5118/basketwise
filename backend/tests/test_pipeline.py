@@ -132,7 +132,17 @@ class FlowTests(TestCase):
         pk = self.upload()
         self.assertEqual(self.confirm(pk, reviewed=False).status_code, 400)
         self.assertEqual(self.confirm(pk, order_date=None).status_code, 400)
-        self.assertEqual(self.confirm(pk, acknowledge_warnings=False).status_code, 400)
+        self.assertEqual(
+            self.confirm(
+                pk,
+                packaging_fee='0',
+                taxes='0',
+                discount='0',
+                grand_total='999.00',
+                acknowledge_warnings=False,
+            ).status_code,
+            400,
+        )
         self.assertEqual(Order.objects.count(), 0)
 
     def test_exact_external_id_across_different_files(self):

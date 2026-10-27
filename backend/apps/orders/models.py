@@ -20,6 +20,7 @@ class Order(models.Model):
     handling_fee = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     delivery_fee = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     packaging_fee = models.DecimalField(max_digits=12, decimal_places=2, null=True)
+    other_fees = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     taxes = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     discount = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     grand_total = models.DecimalField(max_digits=12, decimal_places=2)

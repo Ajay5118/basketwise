@@ -6,8 +6,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:share_plus/share_plus.dart';
 import 'api.dart';
 import 'widgets.dart';
-import 'receipt.dart';
 import 'order_filters.dart';
+import 'design.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -43,115 +43,238 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
+  bool hidePassword = true;
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.all(30),
-          children: [
-            const Icon(
-              Icons.shopping_basket_rounded,
-              size: 64,
-              color: Color(0xff227c66),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'BasketWise',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Every basket. A clearer picture.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-            Text(
-              register ? 'Create your account' : 'Welcome back',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: email,
-              decoration: const InputDecoration(labelText: 'Email address'),
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: password,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-              onSubmitted: (_) {
-                if (!busy && (!register || consent)) submit();
-              },
-            ),
-            if (register)
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: consent,
-                onChanged: (v) => setState(() => consent = v!),
-                title: const Text(
-                  'I consent to processing my uploaded receipts and accept the privacy policy.',
-                ),
+    body: SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 490),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const BrandMark(compact: true),
+                  Icon(
+                    Icons.eco_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
               ),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+              const SizedBox(height: 28),
+              const ReceiptHero(),
+              const SizedBox(height: 30),
+              Eyebrow(
+                register ? 'A FRESH START' : 'YOUR MONEY, A LITTLE CLEARER',
               ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: busy || (register && !consent) ? null : submit,
-              child: Text(
-                busy
-                    ? 'Please wait…'
-                    : register
-                    ? 'Create account'
-                    : 'Sign in',
-              ),
-            ),
-            TextButton(
-              onPressed: () => setState(() {
-                register = !register;
-                error = null;
-              }),
-              child: Text(
+              const SizedBox(height: 8),
+              Text(
                 register
-                    ? 'Already have an account? Sign in'
-                    : 'New here? Create an account',
+                    ? 'Your next chapter starts here.'
+                    : 'Good to see you.',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ResetScreen()),
+              const SizedBox(height: 8),
+              Text(
+                register
+                    ? 'One place for your grocery receipts and spending.'
+                    : 'Sign in and pick up where your last basket left off.',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
               ),
-              child: const Text('Forgot password?'),
-            ),
-            TextButton(
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => const AlertDialog(
-                  title: Text('Your privacy'),
-                  content: SingleChildScrollView(
-                    child: Text(
-                      'BasketWise processes documents you choose to upload. Receipts remain private and are removed after the configured retention period (30 days by default). Saved order data remains until you delete it or your account. No SMS inbox access, merchant login or email syncing is enabled. Bank alerts retain only amount, date and merchant; account and VPA details are discarded. Export and delete your data from Profile. Production hosting must provide TLS and encrypted storage.',
+              const SizedBox(height: 24),
+              AutofillGroup(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: email,
+                      decoration: const InputDecoration(
+                        labelText: 'Email address',
+                        prefixIcon: Icon(
+                          Icons.alternate_email_rounded,
+                          size: 20,
+                        ),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.email],
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: password,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                          size: 20,
+                        ),
+                        suffixIcon: IconButton(
+                          tooltip: hidePassword
+                              ? 'Show password'
+                              : 'Hide password',
+                          onPressed: () =>
+                              setState(() => hidePassword = !hidePassword),
+                          icon: Icon(
+                            hidePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      obscureText: hidePassword,
+                      autofillHints: [
+                        register
+                            ? AutofillHints.newPassword
+                            : AutofillHints.password,
+                      ],
+                      onSubmitted: (_) {
+                        if (!busy && (!register || consent)) submit();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              if (!register)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ResetScreen()),
+                    ),
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
+              if (register)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: consent,
+                    onChanged: (value) => setState(() => consent = value!),
+                    title: const Text(
+                      'I consent to processing my uploaded receipts and accept the privacy policy.',
+                      style: TextStyle(fontSize: 12),
                     ),
                   ),
                 ),
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            error!,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: busy || (register && !consent) ? null : submit,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (busy)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 10),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    Text(
+                      busy
+                          ? 'Please wait…'
+                          : register
+                          ? 'Create account'
+                          : 'Sign in',
+                    ),
+                    const SizedBox(width: 12),
+                    if (!busy)
+                      const Icon(Icons.arrow_forward_rounded, size: 18),
+                  ],
+                ),
               ),
-              child: const Text('Privacy policy'),
-            ),
-          ],
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => setState(() {
+                        register = !register;
+                        error = null;
+                      }),
+                child: Text(
+                  register
+                      ? 'Already have an account? Sign in'
+                      : 'New here? Create an account',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Your receipts. Your control.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => const AlertDialog(
+                    title: Text('Your privacy'),
+                    content: SingleChildScrollView(
+                      child: Text(
+                        'BasketWise processes only the documents you upload. Receipt files are private and removed after the configured retention period, 30 days by default. Saved orders remain until you delete them or your account. No SMS inbox access or merchant credentials are required. You can export or delete your data from Profile.',
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text(
+                  'Privacy policy',
+                  style: TextStyle(fontSize: 11),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ),
@@ -270,6 +393,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(revisionProvider, (_, _) => setState(load));
+    ref.listen<String?>(homeBannerProvider, (previous, next) {
+      if (next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ref.read(homeBannerProvider.notifier).state = null;
+      });
+    });
     return RemoteData(
       future: data,
       retry: () => setState(load),
@@ -282,8 +418,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             await data;
           },
           child: PageBody(
-            title: 'Your everyday,\nin perspective.',
-            subtitle: 'BASKETWISE  /  SPENDING OVERVIEW',
+            title: 'Every basket,\na clearer picture.',
+            subtitle: 'Your grocery spending, thoughtfully organised.',
             action: IconButton(
               tooltip: 'Filter dates',
               icon: const Icon(Icons.date_range_outlined),
@@ -304,11 +440,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             children: [
               Container(
-                padding: const EdgeInsets.all(28),
+                padding: const EdgeInsets.all(25),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(26),
                   gradient: const LinearGradient(
-                    colors: [Color(0xff164e40), Color(0xff27826a)],
+                    colors: [Color(0xff123f36), Color(0xff1b6753)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -316,21 +452,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Eyebrow(
+                          'YOUR MONTH IN A BASKET',
+                          color: Color(0xffc0dfce),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet_outlined,
+                            color: Color(0xffd8ecdf),
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
                     const Text(
                       'THIS MONTH · NET SPENDING',
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 12,
-                        letterSpacing: 1.7,
+                        fontSize: 10,
+                        letterSpacing: 1.3,
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Text(
-                      rupees(summary['this_month']['net_spending']),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 40,
-                        fontWeight: FontWeight.w700,
+                    FittedBox(
+                      alignment: Alignment.centerLeft,
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        rupees(summary['this_month']['net_spending']),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 43,
+                          letterSpacing: -1.6,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -349,9 +512,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final width = constraints.maxWidth < 600
-                      ? (constraints.maxWidth - 14) / 2
-                      : (constraints.maxWidth - 28) / 3;
+                  final width = (constraints.maxWidth - 14) / 2;
                   return Wrap(
                     spacing: 14,
                     runSpacing: 14,
@@ -368,46 +529,95 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         Icons.shopping_bag_outlined,
                         width,
                       ),
-                      _metric(
-                        'Net in date range',
-                        rupees(summary['net_spending']),
-                        Icons.account_balance_wallet_outlined,
-                        width,
-                      ),
                     ],
                   );
                 },
               ),
-              FilledButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const Scaffold(body: SafeArea(child: ScanScreen())),
+              InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: () =>
+                    ref.read(shellTabProvider.notifier).state = 2,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? const Color(0xffedece0)
+                        : const Color(0xff293a30),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Import a receipt',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'A new basket, a clearer picture.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_rounded, size: 19),
+                    ],
                   ),
                 ),
-                icon: const Icon(Icons.add),
-                label: const Text('Import a receipt'),
               ),
+              if (range != null)
+                SoftNotice(
+                  icon: Icons.date_range_outlined,
+                  title: 'Your selected date range',
+                  text:
+                      'Net spending ${rupees(summary['net_spending'])} across ${summary['order_count']} orders. The main card always shows this month.',
+                ),
               Panel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Across your baskets',
+                      'Where you shop',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 12),
                     if ((summary['platforms'] as List).isEmpty)
-                      const Text(
-                        'Your platform breakdown appears after your first confirmed purchase.',
-                      ),
-                    for (final platform in summary['platforms'])
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(platform['label'].toString().toUpperCase()),
-                        trailing: Text(rupees(platform['amount'])),
-                      ),
+                      EmptyState(
+                        icon: Icons.storefront_outlined,
+                        title: 'No shops yet',
+                        message:
+                            'After you save a purchase, you’ll see where you spend most.',
+                        action: FilledButton.tonal(
+                          onPressed: () =>
+                              ref.read(shellTabProvider.notifier).state = 2,
+                          child: const Text('Add a receipt'),
+                        ),
+                      )
+                    else
+                      for (final platform in summary['platforms'])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            platformLabel(platform['label'].toString()),
+                          ),
+                          trailing: Text(rupees(platform['amount'])),
+                        ),
                   ],
                 ),
               ),
@@ -416,7 +626,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Fees, made visible',
+                      'The little extras',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 12),
@@ -435,14 +645,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Recent orders',
+                      'Your latest baskets',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     if (recent.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Text(
-                          'A little clarity starts with your first receipt. Upload, review, then save.',
+                      EmptyState(
+                        icon: Icons.receipt_long_outlined,
+                        title: 'No saved baskets yet',
+                        message:
+                            'Scan or upload a receipt, review the details, then save.',
+                        action: FilledButton.tonal(
+                          onPressed: () =>
+                              ref.read(shellTabProvider.notifier).state = 2,
+                          child: const Text('Scan a receipt'),
                         ),
                       ),
                     for (final order in recent.take(5))
@@ -471,16 +686,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 22),
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: BasketStyle.mint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: BasketStyle.green, size: 18),
+              ),
               const SizedBox(height: 16),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.bold,
+              FittedBox(
+                alignment: Alignment.centerLeft,
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.6,
+                  ),
                 ),
               ),
-              Text(title),
+              const SizedBox(height: 4),
+              Text(title, style: const TextStyle(fontSize: 12)),
             ],
           ),
         ),
@@ -529,159 +757,157 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(revisionProvider, (_, _) => setState(load));
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              TextField(
-                controller: search,
-                decoration: InputDecoration(
-                  labelText: 'Search products, platforms or order ID',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () => setState(() {
-                      page = 1;
-                      load();
-                    }),
-                  ),
-                ),
-                onSubmitted: (_) => setState(() {
+    return RemoteData(
+      future: data,
+      retry: () => setState(load),
+      builder: (result) => PageBody(
+        title: 'Your baskets',
+        subtitle: '${result['count']} saved purchases',
+        children: [
+          TextField(
+            controller: search,
+            decoration: InputDecoration(
+              labelText: 'Search products or amounts',
+              prefixIcon: const Icon(Icons.search_rounded, size: 22),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.arrow_forward_rounded),
+                onPressed: () => setState(() {
                   page = 1;
                   load();
                 }),
               ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final result = await showDialog<Json>(
-                      context: context,
-                      builder: (context) => OrderFilters(initial: filters),
-                    );
-                    if (result != null && mounted) {
-                      setState(() {
-                        filters.clear();
-                        filters.addAll(result);
-                        page = 1;
-                        load();
-                      });
-                    }
-                  },
-                  icon: const Icon(Icons.tune),
-                  label: const Text('Date, amount & source'),
+            ),
+            onSubmitted: (_) => setState(() {
+              page = 1;
+              load();
+            }),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () async {
+                final chosen = await showDialog<Json>(
+                  context: context,
+                  builder: (context) => OrderFilters(initial: filters),
+                );
+                if (chosen != null && mounted) {
+                  setState(() {
+                    filters.clear();
+                    filters.addAll(chosen);
+                    page = 1;
+                    load();
+                  });
+                }
+              },
+              icon: const Icon(Icons.tune_rounded),
+              label: const Text('Filters'),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: platform,
+                  decoration: const InputDecoration(labelText: 'Shop'),
+                  items: [
+                    for (final p in [
+                      '',
+                      'instamart',
+                      'blinkit',
+                      'zepto',
+                      'bigbasket',
+                      'other',
+                    ])
+                      DropdownMenuItem(
+                        value: p,
+                        child: Text(
+                          p.isEmpty ? 'All shops' : platformLabel(p),
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() {
+                    platform = v!;
+                    page = 1;
+                    load();
+                  }),
                 ),
               ),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: platform,
-                      decoration: const InputDecoration(labelText: 'Platform'),
-                      items: [
-                        for (final p in [
-                          '',
-                          'instamart',
-                          'blinkit',
-                          'zepto',
-                          'bigbasket',
-                          'other',
-                        ])
-                          DropdownMenuItem(
-                            value: p,
-                            child: Text(p.isEmpty ? 'All platforms' : p),
-                          ),
-                      ],
-                      onChanged: (v) => setState(() {
-                        platform = v!;
-                        page = 1;
-                        load();
-                      }),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: status,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: [
-                        for (final s in [
-                          '',
-                          'delivered',
-                          'cancelled',
-                          'pending',
-                          'refunded',
-                          'unknown',
-                        ])
-                          DropdownMenuItem(
-                            value: s,
-                            child: Text(s.isEmpty ? 'All statuses' : s),
-                          ),
-                      ],
-                      onChanged: (v) => setState(() {
-                        status = v!;
-                        page = 1;
-                        load();
-                      }),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: status,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: [
+                    for (final s in [
+                      '',
+                      'delivered',
+                      'cancelled',
+                      'pending',
+                      'refunded',
+                      'unknown',
+                    ])
+                      DropdownMenuItem(
+                        value: s,
+                        child: Text(
+                          s.isEmpty ? 'Any status' : orderStatusLabel(s),
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() {
+                    status = v!;
+                    page = 1;
+                    load();
+                  }),
+                ),
               ),
             ],
           ),
-        ),
-        Expanded(
-          child: RemoteData(
-            future: data,
-            retry: () => setState(load),
-            builder: (result) => PageBody(
-              title: 'Your orders',
-              subtitle: '${result['count']} saved purchases',
+          if ((result['results'] as List).isEmpty)
+            EmptyState(
+              icon: Icons.search_off_rounded,
+              title: 'Nothing matched',
+              message:
+                  'Try a different search or add a receipt from the Scan tab.',
+              action: FilledButton.tonal(
+                onPressed: () => ref.read(shellTabProvider.notifier).state = 2,
+                child: const Text('Go to Scan'),
+              ),
+            )
+          else
+            for (final order in result['results'])
+              Panel(
+                child: OrderTile(
+                  order: Json.from(order),
+                  onTap: () => context.push('/orders/${order['id']}'),
+                ),
+              ),
+          if ((result['results'] as List).isNotEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if ((result['results'] as List).isEmpty)
-                  const Panel(
-                    child: Text(
-                      'No matching orders. Try another search or import a receipt.',
-                    ),
-                  ),
-                for (final order in result['results'])
-                  Panel(
-                    child: OrderTile(
-                      order: Json.from(order),
-                      onTap: () => context.push('/orders/${order['id']}'),
-                    ),
-                  ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: page > 1
-                          ? () => setState(() {
-                              page--;
-                              load();
-                            })
-                          : null,
-                      child: const Text('Previous'),
-                    ),
-                    Text('Page $page'),
-                    TextButton(
-                      onPressed: result['next'] != null
-                          ? () => setState(() {
-                              page++;
-                              load();
-                            })
-                          : null,
-                      child: const Text('Next'),
-                    ),
-                  ],
+                TextButton(
+                  onPressed: page > 1
+                      ? () => setState(() {
+                          page--;
+                          load();
+                        })
+                      : null,
+                  child: const Text('Previous'),
+                ),
+                Text('Page $page'),
+                TextButton(
+                  onPressed: result['next'] != null
+                      ? () => setState(() {
+                          page++;
+                          load();
+                        })
+                      : null,
+                  child: const Text('Next'),
                 ),
               ],
             ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -718,7 +944,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     builder: (result) {
       final rows = result[0] as List;
       return PageBody(
-        title: 'Small baskets.\nBigger insights.',
+        title: 'Meet your\nspending habits.',
         subtitle: 'Understand the habits behind your spending.',
         children: [
           SegmentedButton<String>(
@@ -742,7 +968,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
                 const SizedBox(height: 24),
                 if (rows.isEmpty)
-                  const Text('Charts appear after a confirmed purchase.')
+                  EmptyState(
+                    icon: Icons.bar_chart_rounded,
+                    title: 'No spending chart yet',
+                    message:
+                        'Save your first purchase to see how spending changes over time.',
+                    action: FilledButton.tonal(
+                      onPressed: () =>
+                          ref.read(shellTabProvider.notifier).state = 2,
+                      child: const Text('Add a receipt'),
+                    ),
+                  )
                 else
                   SizedBox(
                     height: 200,
@@ -873,15 +1109,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     future: data,
     retry: () => setState(load),
     builder: (profile) => PageBody(
-      title: 'A space for you.',
+      title: 'Make it yours.',
       subtitle: profile['email'],
       children: [
+        SoftNotice(
+          icon: Icons.person_outline_rounded,
+          title: 'Your personal space',
+          text:
+              'Set your budget, choose your look and keep control of your data.',
+        ),
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Preferences',
+                'Your preferences',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 18),
@@ -890,7 +1132,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 decoration: const InputDecoration(labelText: 'Appearance'),
                 items: [
                   for (final theme in ['system', 'light', 'dark'])
-                    DropdownMenuItem(value: theme, child: Text(theme)),
+                    DropdownMenuItem(
+                      value: theme,
+                      child: Text(
+                        switch (theme) {
+                          'light' => 'Light',
+                          'dark' => 'Dark',
+                          _ => 'Match device',
+                        },
+                      ),
+                    ),
                 ],
                 onChanged: busy
                     ? null

@@ -1,7 +1,26 @@
+name: basketwise
+
+x-app-environment: &app-environment
+  SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the .env file next to compose.yaml}
+  DEBUG: ${DEBUG:-1}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,10.0.2.2}
+  POSTGRES_DB: ${POSTGRES_DB:-basketwise}
+  POSTGRES_USER: ${POSTGRES_USER:-basketwise}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env file next to compose.yaml}
+  POSTGRES_HOST: db
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://redis:6379/1}
+  RECEIPT_RETENTION_DAYS: ${RECEIPT_RETENTION_DAYS:-30}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+
 services:
   db:
     image: postgres:16-alpine
-    env_file: .env
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-basketwise}
+      POSTGRES_USER: ${POSTGRES_USER:-basketwise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env file next to compose.yaml}
     volumes: [postgres_data:/var/lib/postgresql/data]
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
@@ -9,31 +28,58 @@ services:
       retries: 10
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [redis_data:/data]
     healthcheck:
       test: [CMD, redis-cli, ping]
       interval: 5s
       retries: 10
   api:
     build: ./backend
+    restart: unless-stopped
+    init: true
     env_file: .env
+    environment: *app-environment
     ports: ['8000:8000']
     volumes: [private_receipts:/app/private-media]
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_healthy}
-    command: sh -c 'python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2'
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=5).close()"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: sh -c 'python manage.py migrate && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120'
   worker:
     build: ./backend
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 150s
     env_file: .env
+    environment: *app-environment
     volumes: [private_receipts:/app/private-media]
     depends_on:
-      api: {condition: service_started}
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD-SHELL, 'celery -A config inspect ping --destination celery@$${HOSTNAME} --timeout 5']
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
     command: celery -A config worker --loglevel=warning --concurrency=2
   beat:
     build: ./backend
+    restart: unless-stopped
+    init: true
     env_file: .env
-    depends_on: [api]
+    environment: *app-environment
+    depends_on:
+      api: {condition: service_healthy}
     command: celery -A config beat --loglevel=warning --schedule=/tmp/celerybeat-schedule
 volumes:
   postgres_data:
+  redis_data:
   private_receipts:

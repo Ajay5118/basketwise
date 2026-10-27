@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'api.dart';
+import 'design.dart';
 
 String rupees(dynamic amount) => amount == null
     ? 'Unknown'
@@ -14,26 +15,31 @@ class PageBody extends StatelessWidget {
   final String title, subtitle;
   final List<Widget> children;
   final Widget? action;
+  final bool showBranding;
   const PageBody({
     super.key,
     required this.title,
     required this.subtitle,
     required this.children,
     this.action,
+    this.showBranding = true,
   });
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
     physics: const AlwaysScrollableScrollPhysics(),
-    padding: const EdgeInsets.all(24),
+    padding: const EdgeInsets.fromLTRB(22, 24, 22, 28),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (showBranding) ...[const BrandMark(compact: true), const SizedBox(height: 28)],
         Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Eyebrow('YOUR EVERYDAY, UNDERSTOOD'),
+                  const SizedBox(height: 9),
                   Text(
                     title,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -41,7 +47,12 @@ class PageBody extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -60,7 +71,7 @@ class Panel extends StatelessWidget {
   const Panel({super.key, required this.child});
   @override
   Widget build(BuildContext context) => Card(
-    child: Padding(padding: const EdgeInsets.all(22), child: child),
+    child: Padding(padding: const EdgeInsets.all(20), child: child),
   );
 }
 
@@ -96,7 +107,16 @@ class RemoteData extends StatelessWidget {
         );
       }
       if (!snapshot.hasData) {
-        return const Center(child: CircularProgressIndicator());
+        return const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading…'),
+            ],
+          ),
+        );
       }
       return builder(snapshot.data);
     },
@@ -108,26 +128,82 @@ class OrderTile extends StatelessWidget {
   final VoidCallback onTap;
   const OrderTile({super.key, required this.order, required this.onTap});
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(vertical: 6),
-    leading: CircleAvatar(
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      child: const Icon(Icons.shopping_basket_outlined),
-    ),
-    title: Text(
-      order['platform'].toString().toUpperCase(),
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-    ),
-    subtitle: Text(
-      '${order['order_date']} · ${order['status']}\n${(order['items'] as List).length} products · ${order['import_source']}',
-    ),
-    isThreeLine: true,
-    trailing: Text(
-      rupees(order['grand_total']),
-      style: const TextStyle(fontWeight: FontWeight.w700),
-    ),
-    onTap: onTap,
-  );
+  Widget build(BuildContext context) {
+    final platform = (order['platform'] ?? 'other').toString();
+    final label = platformLabel(platform);
+    final color = switch (platform) {
+      'zepto' => const Color(0xff7754a8),
+      'blinkit' => const Color(0xff9a7a19),
+      'instamart' => const Color(0xffc46632),
+      _ => BasketStyle.green,
+    };
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(Icons.shopping_bag_outlined, color: color, size: 23),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${order['order_date']} · ${(order['items'] as List? ?? []).length} items',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    orderStatusLabel(order['status']?.toString()),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                rupees(order['grand_total']),
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 void showError(BuildContext context, Object error) =>
@@ -146,16 +222,20 @@ Future<bool> approve(
     await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: Text(title),
-        content: Text(message),
+        content: Text(
+          message,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Not yet'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Continue'),
+            child: const Text('Yes, save'),
           ),
         ],
       ),

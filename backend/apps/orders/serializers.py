@@ -5,6 +5,8 @@ from .models import Order, OrderItem, Correction, PaymentTransaction, Refund
 
 
 class ItemSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(max_length=80, required=False, allow_blank=True, default='Uncategorized')
+
     def validate(self, data):
         if data.get('unit_price_derived'):
             quantity, total = data.get('quantity'), data.get('line_total')
@@ -25,17 +27,23 @@ class ItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Quantity must be positive.')
         return value
 
+    def validate_category(self, value):
+        cleaned = (value or '').strip()
+        return cleaned or 'Uncategorized'
+
 
 class OrderSerializer(serializers.ModelSerializer):
     items = ItemSerializer(many=True)
     class Meta:
         model = Order
-        fields = ['id', 'platform', 'external_order_id', 'order_date', 'status', 'currency', 'item_subtotal', 'handling_fee', 'delivery_fee', 'packaging_fee', 'taxes', 'discount', 'grand_total', 'refunded_amount', 'import_source', 'verification_status', 'items', 'created_at', 'updated_at']
+        fields = ['id', 'platform', 'external_order_id', 'order_date', 'status', 'currency', 'item_subtotal', 'handling_fee', 'delivery_fee', 'packaging_fee', 'other_fees', 'taxes', 'discount', 'grand_total', 'refunded_amount', 'import_source', 'verification_status', 'items', 'created_at', 'updated_at']
         read_only_fields = ['refunded_amount', 'import_source', 'verification_status', 'created_at', 'updated_at']
-        extra_kwargs = {k: {'min_value': Decimal('0')} for k in ['item_subtotal', 'handling_fee', 'delivery_fee', 'packaging_fee', 'taxes', 'discount', 'grand_total']}
+        extra_kwargs = {k: {'min_value': Decimal('0')} for k in ['item_subtotal', 'handling_fee', 'delivery_fee', 'packaging_fee', 'other_fees', 'taxes', 'discount', 'grand_total']}
         validators = []  # User-scoped constraint is enforced inside atomic confirmation/update.
 
     def validate_currency(self, value):
+        if value in (None, ''):
+            return 'INR'
         if value != 'INR':
             raise serializers.ValidationError('MVP supports INR only.')
         return value

@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenBlacklistView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -6,7 +7,13 @@ from apps.receipts.views import UploadView, ReceiptView, ReceiptListView
 from apps.orders.views import OrderListView, OrderDetailView, RefundView, PaymentListView, PaymentImportView, PaymentLinkView
 from apps.analytics.views import AnalyticsView
 
+
+def health(_request):
+    return JsonResponse({'status': 'ok'})
+
+
 urlpatterns = [
+    path('api/health/', health),
     path('api/v1/auth/register/', RegisterView.as_view()),
     path('api/v1/auth/login/', TokenObtainPairView.as_view()),
     path('api/v1/auth/refresh/', TokenRefreshView.as_view()),
