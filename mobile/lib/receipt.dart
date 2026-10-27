@@ -248,10 +248,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Your receipts',
-              style: Theme.of(context).textTheme.titleLarge,
+            Expanded(
+              child: Text(
+                'Your receipts',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
+            const SizedBox(width: 12),
             Text(
               '${uploads.length} imported',
               style: Theme.of(context).textTheme.bodySmall,

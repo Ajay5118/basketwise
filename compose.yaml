@@ -36,7 +36,9 @@ services:
       interval: 5s
       retries: 10
   api:
+    # api, worker and beat share one image so they always run the same code.
     build: ./backend
+    image: basketwise-backend
     restart: unless-stopped
     init: true
     env_file: .env
@@ -54,7 +56,8 @@ services:
       start_period: 30s
     command: sh -c 'python manage.py migrate && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120'
   worker:
-    build: ./backend
+    image: basketwise-backend
+    pull_policy: never
     restart: unless-stopped
     init: true
     stop_grace_period: 150s
@@ -71,7 +74,8 @@ services:
       start_period: 30s
     command: celery -A config worker --loglevel=warning --concurrency=2
   beat:
-    build: ./backend
+    image: basketwise-backend
+    pull_policy: never
     restart: unless-stopped
     init: true
     env_file: .env

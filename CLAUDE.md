@@ -54,8 +54,8 @@ scripts/run-android-usb.ps1   build + install debug APK on a USB phone with adb 
    docker compose up -d --build --wait --wait-timeout 240
    ```
    Persist with `[Environment]::SetEnvironmentVariable('BUILDX_BAKE_ENTITLEMENTS_FS','0','User')`.
-   After any backend code change, **verify the image actually rebuilt** (`docker images basketwise-api` timestamp, or `docker compose exec -T api grep -n health config/urls.py`).
-2. api, worker and beat are built as **three separate images** from `./backend`. A partial rebuild can leave the worker on old code. Rebuild all three together.
+   After any backend code change, **verify the image actually rebuilt** (`docker images basketwise-backend` timestamp, or `docker compose exec -T api grep -n health config/urls.py`).
+2. api, worker and beat share one image, `basketwise-backend`, built by the api service (worker/beat use `pull_policy: never`). After a backend change, `docker compose up -d --build` rebuilds it once for all three. `scripts/run-android-usb.ps1` sets `BUILDX_BAKE_ENTITLEMENTS_FS=0` itself and fails if `/api/health/` doesn't answer.
 3. `SECRET_KEY` missing or starting with `replace-with-` → `RuntimeError` at import. Compose also refuses to start without `POSTGRES_PASSWORD`.
 4. Postgres "superuser password is not specified" after a failed first start: the volume was initialised without a password. `docker compose down -v` fixes it but **deletes all local data**. Ask the user first.
 5. `/` and `/api/v1/` return 404 by design. Health is `/api/health/`; docs at `/api/docs/`. Anonymous throttle is 30/hour, so don't poll `/api/docs/`.

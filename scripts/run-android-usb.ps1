@@ -31,8 +31,16 @@ try {
     }
     if ($DeviceId -notin $readyDevices) { throw 'The selected Android device is not connected or USB debugging is not authorized.' }
 
+    # Buildx 0.37+ refuses this build without the entitlement opt-out yet Compose may still exit 0.
+    if (-not $env:BUILDX_BAKE_ENTITLEMENTS_FS) { $env:BUILDX_BAKE_ENTITLEMENTS_FS = '0' }
     & docker compose up -d --build --wait --wait-timeout 180
     if ($LASTEXITCODE -ne 0) { throw 'The backend did not start. Open Docker Desktop and check docker compose logs.' }
+    try {
+        $health = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/health/' -TimeoutSec 10
+    } catch {
+        throw 'The API is not answering at http://127.0.0.1:8000/api/health/. Check docker compose ps and docker compose logs api.'
+    }
+    if ($health.status -ne 'ok') { throw 'The API health check did not report ok.' }
 
     & $adbPath -s $DeviceId reverse tcp:8000 tcp:8000
     if ($LASTEXITCODE -ne 0) { throw 'Could not forward the API port over USB.' }
